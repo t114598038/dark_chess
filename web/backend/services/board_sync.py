@@ -10,6 +10,13 @@ class BoardSync:
     def __init__(self, sio: socketio.AsyncServer) -> None:
         self._sio = sio
 
+    async def broadcast(self, room_number: str, board_state: list[list[str]]) -> None:
+        room_name = f"{room_number}-board"
+        await self._sio.emit("board_update", board_state, room=room_name)
+
+    async def send_to_client(self, sid: str, board_state: list[list[str]]) -> None:
+        await self._sio.emit("board_update", board_state, room=sid)
+
     async def draw(
         self, room_number: str, board_state: list[list[str]]
     ) -> BoardSyncResponse:

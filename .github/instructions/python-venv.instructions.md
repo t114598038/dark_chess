@@ -1,6 +1,6 @@
 ---
 description: "Use when running Python commands, installing packages, starting the backend server, or executing tests. Ensures the .venv virtual environment is activated first."
-applyTo: "backend/**"
+applyTo: "web/backend/**"
 ---
 
 # Python Virtual Environment

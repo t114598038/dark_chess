@@ -1,6 +1,12 @@
 <script setup lang="ts">
-defineProps<{
+const props = defineProps<{
   boardState: string[][]
+  selectedPiece: { x: number; y: number } | null
+  interactive: boolean
+}>()
+
+const emit = defineEmits<{
+  cellClick: [rowIndex: number, colIndex: number]
 }>()
 
 const redPieceMap: Record<string, string> = {
@@ -41,8 +47,14 @@ function isCovered(cell: string): boolean {
   return cell === 'Covered'
 }
 
-function isEmpty(cell: string): boolean {
-  return cell === 'Null'
+function isSelected(rowIndex: number, colIndex: number): boolean {
+  return props.selectedPiece?.x === rowIndex && props.selectedPiece?.y === colIndex
+}
+
+function handleClick(rowIndex: number, colIndex: number) {
+  if (props.interactive) {
+    emit('cellClick', rowIndex, colIndex)
+  }
 }
 </script>
 
@@ -53,17 +65,21 @@ function isEmpty(cell: string): boolean {
         v-for="(cell, colIndex) in row"
         :key="colIndex"
         class="m-0.5 flex h-18 w-18 items-center justify-center rounded-sm bg-amber-600"
+        :class="{ 'cursor-pointer hover:bg-amber-500': interactive }"
+        @click="handleClick(rowIndex, colIndex)"
       >
-        <!-- Covered piece: solid dark circle -->
+        <!-- Covered piece -->
         <div
           v-if="isCovered(cell)"
           class="flex h-14 w-14 items-center justify-center rounded-full bg-amber-900 shadow-md ring-2 ring-amber-950"
+          :class="{ 'ring-4 ring-yellow-400': isSelected(rowIndex, colIndex) }"
         />
 
         <!-- Red piece -->
         <div
           v-else-if="isRed(cell)"
           class="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 shadow-md ring-2 ring-red-700"
+          :class="{ 'ring-4 ring-yellow-400': isSelected(rowIndex, colIndex) }"
         >
           <span class="text-2xl font-bold text-red-700">{{ getPieceLabel(cell) }}</span>
         </div>
@@ -72,11 +88,17 @@ function isEmpty(cell: string): boolean {
         <div
           v-else-if="isBlack(cell)"
           class="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 shadow-md ring-2 ring-gray-800"
+          :class="{ 'ring-4 ring-yellow-400': isSelected(rowIndex, colIndex) }"
         >
           <span class="text-2xl font-bold text-gray-900">{{ getPieceLabel(cell) }}</span>
         </div>
 
-        <!-- Empty cell: no piece -->
+        <!-- Empty cell -->
+        <div
+          v-else
+          class="flex h-14 w-14 items-center justify-center"
+          :class="{ 'rounded-full ring-2 ring-yellow-400 ring-dashed': isSelected(rowIndex, colIndex) }"
+        />
       </div>
     </div>
   </div>
