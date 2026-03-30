@@ -1,0 +1,6 @@
+(base) PS D:\Desktop\black_chess> python -m venv .venv
+(base) PS D:\Desktop\black_chess> .\.venv\Scripts\Activate.ps1
+
+
+.\.venv\Scripts\python.exe -m uvicorn main:combined_app --reload --app-dir web\backend
+
