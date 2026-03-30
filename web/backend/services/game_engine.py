@@ -4,36 +4,39 @@ from typing import List, Optional, Tuple
 BOARD_ROWS = 4
 BOARD_COLS = 8
 
-PIECES = [
-    "Red_King", "Black_King",
-    "Red_Guard", "Red_Guard", "Black_Guard", "Black_Guard",
-    "Red_Elephant", "Red_Elephant", "Black_Elephant", "Black_Elephant",
-    "Red_Car", "Red_Car", "Black_Car", "Black_Car",
-    "Red_Horse", "Red_Horse", "Black_Horse", "Black_Horse",
-    "Red_Cannon", "Red_Cannon", "Black_Cannon", "Black_Cannon",
-    "Red_Soldier", "Red_Soldier", "Red_Soldier", "Red_Soldier", "Red_Soldier",
-    "Black_Soldier", "Black_Soldier", "Black_Soldier", "Black_Soldier", "Black_Soldier"
-]
-
-RANK_MAP = {
-    "King": 7,
-    "Guard": 6,
-    "Elephant": 5,
-    "Car": 4,
-    "Horse": 3,
-    "Cannon": 2,
-    "Soldier": 1
+# 階級定義：帥(7) > 仕(6) > 象(5) > 俥(4) > 傌(3) > 炮(2) > 兵(1)
+RANK = {
+    'King': 7, 'Guard': 6, 'Elephant': 5, 'Car': 4, 
+    'Horse': 3, 'Cannon': 2, 'Soldier': 1
 }
+
+PIECE_POOL_INIT = [
+    'Red_King', 
+    'Red_Guard', 'Red_Guard',
+    'Red_Elephant', 'Red_Elephant',
+    'Red_Car', 'Red_Car',
+    'Red_Horse', 'Red_Horse',
+    'Red_Cannon', 'Red_Cannon',
+    'Red_Soldier', 'Red_Soldier', 'Red_Soldier', 'Red_Soldier', 'Red_Soldier',
+    'Black_King', 
+    'Black_Guard', 'Black_Guard',
+    'Black_Elephant', 'Black_Elephant',
+    'Black_Car', 'Black_Car',
+    'Black_Horse', 'Black_Horse',
+    'Black_Cannon', 'Black_Cannon',
+    'Black_Soldier', 'Black_Soldier', 'Black_Soldier', 'Black_Soldier', 'Black_Soldier'
+]
 
 class GameEngine:
     def __init__(self):
-        self.board = [["Covered" for _ in range(BOARD_COLS)] for _ in range(BOARD_ROWS)]
-        self.hidden_board = self._initialize_board()
-        self.turn = "None"  # Red, Black, or None (before first flip)
-        self.no_action_steps = 0
-        self.winner = None
+        self.checkerboard_display = [['Covered'] * 8 for _ in range(4)]
+        self.piece_pool = PIECE_POOL_INIT.copy()
+        random.shuffle(self.piece_pool)
+        self.color_table = {}  # "A" or "B" -> "Red" or "Black"
+        self.move_count_since_action = 0
+        self.current_turn = random.choice(["A", "B"])
         self.players = []  # List of player identifiers (e.g., sid or addr)
-        self.player_colors = {} # identifier -> "Red" or "Black"
+        self.winner = None
 
     def register_player(self, player_id: str) -> bool:
         if len(self.players) >= 2:
@@ -42,167 +45,155 @@ class GameEngine:
             self.players.append(player_id)
         return True
 
-    def _initialize_board(self) -> List[List[str]]:
-        pieces = PIECES.copy()
-        random.shuffle(pieces)
-        board = []
-        for i in range(BOARD_ROWS):
-            board.append(pieces[i*BOARD_COLS : (i+1)*BOARD_COLS])
-        return board
-
     def get_public_board(self) -> List[List[str]]:
-        return self.board
+        return self.checkerboard_display
+
+    def get_player_name(self, player_id: str) -> str:
+        if player_id in self.players:
+            return "A" if self.players.index(player_id) == 0 else "B"
+        return "Unknown"
 
     def action(self, player_id: str, x1: int, y1: int, x2: int = -1, y2: int = -1) -> Tuple[bool, str]:
-        if self.winner:
-            return False, f"Game over. Winner: {self.winner}"
+        status = self.check_game_over()
+        if status != "Playing":
+            return False, f"Game over: {status}"
         
-        if player_id not in self.players:
+        name = self.get_player_name(player_id)
+        if name == "Unknown":
             return False, "You are not a registered player in this room"
 
-        # If colors are assigned, check if it's this player's turn
-        if self.turn != "None":
-            assigned_color = self.player_colors.get(player_id)
-            if assigned_color and self.turn != assigned_color:
-                return False, f"Not your turn (You are {assigned_color}, current turn: {self.turn})"
-
-        # Flip piece
-        if x2 == -1 and y2 == -1:
-            return self._flip(player_id, x1, y1)
+        valid, message = self.isValid(name, x1, y1, x2, y2)
         
-        # Move or Eat
-        return self._move_or_eat(player_id, x1, y1, x2, y2)
-
-    def _flip(self, player_id: str, x: int, y: int) -> Tuple[bool, str]:
-        if not (0 <= x < BOARD_ROWS and 0 <= y < BOARD_COLS):
-            return False, "Out of bounds"
-        if self.board[x][y] != "Covered":
-            return False, "Already flipped"
-        
-        piece = self.hidden_board[x][y]
-        self.board[x][y] = piece
-        color = piece.split("_")[0]
-        
-        # First flip determines player colors
-        if self.turn == "None":
-            # The player who flips gets THIS color
-            self.player_colors[player_id] = color
-            # The other player gets the OTHER color
-            other_player = [p for p in self.players if p != player_id]
-            if other_player:
-                self.player_colors[other_player[0]] = "Black" if color == "Red" else "Red"
+        if valid:
+            if x2 == -1:
+                # 翻牌邏輯
+                piece = self.piece_pool.pop()
+                self.checkerboard_display[x1][y1] = piece
+                
+                # 第一次翻牌決定陣營
+                if not self.color_table:
+                    p_color = piece.split('_')[0]
+                    other_name = "B" if name == "A" else "A"
+                    self.color_table[name] = p_color
+                    self.color_table[other_name] = "Black" if p_color == "Red" else "Red"
+                
+                self.move_count_since_action = 0 
+                res_msg = f"Flipped {piece}"
+            else:
+                # 移動或吃子邏輯
+                target = self.checkerboard_display[x2][y2]
+                if target != 'Null':
+                    self.move_count_since_action = 0
+                    res_msg = f"Ate {target}"
+                else:
+                    self.move_count_since_action += 1
+                    res_msg = "Moved"
+                
+                self.checkerboard_display[x2][y2] = self.checkerboard_display[x1][y1]
+                self.checkerboard_display[x1][y1] = 'Null'
             
-            # After flip, it's the other color's turn
-            self.turn = "Black" if color == "Red" else "Red"
-        else:
-            self.turn = "Black" if self.turn == "Red" else "Red"
+            # 切換回合
+            self.current_turn = "B" if self.current_turn == "A" else "A"
+            
+            # 檢查勝負
+            status = self.check_game_over()
+            if status != "Playing":
+                self.winner = status
 
-        self.no_action_steps = 0
-        return True, f"Flipped {piece}"
+            return True, res_msg
+        
+        return False, message
 
-    def _move_or_eat(self, player_id: str, x1: int, y1: int, x2: int, y2: int) -> Tuple[bool, str]:
-        if self.turn == "None":
+    def isValid(self, name, x1, y1, x2, y2):
+        if name != self.current_turn:
+            return False, f"Not your turn (Current: {self.current_turn})"
+
+        if not (0 <= x1 < 4 and 0 <= y1 < 8): return False, "Out of bounds"
+        if x2 != -1 and not (0 <= x2 < 4 and 0 <= y2 < 8): return False, "Out of bounds"
+        
+        piece = self.checkerboard_display[x1][y1]
+        
+        # --- 翻牌邏輯 ---
+        if x2 == -1:
+            return (piece == 'Covered'), "Can only flip covered pieces"
+
+        # --- 移動/吃子邏輯 ---
+        if piece == 'Covered' or piece == 'Null': return False, "Invalid source"
+        
+        p_color = self.color_table.get(name)
+        if not p_color:
             return False, "Must flip a piece first to determine colors"
+            
+        if not piece.startswith(p_color): 
+            return False, f"Not your piece (You are {p_color})"
         
-        assigned_color = self.player_colors.get(player_id)
-        if not assigned_color:
-            return False, "Color not assigned"
-
-        if not (0 <= x1 < BOARD_ROWS and 0 <= y1 < BOARD_COLS and 
-                0 <= x2 < BOARD_ROWS and 0 <= y2 < BOARD_COLS):
-            return False, "Out of bounds"
+        target = self.checkerboard_display[x2][y2]
+        if target.startswith(p_color): return False, "Cannot eat your own piece"
         
-        p1 = self.board[x1][y1]
-        if p1 == "Covered" or p1 == "Null":
-            return False, "Invalid source"
-        
-        color1, type1 = p1.split("_")
-        if assigned_color != color1:
-            return False, f"Cannot move opponent's piece ({color1})"
-        
-        if self.turn != color1:
-            return False, f"Not {color1}'s turn"
-
-        p2 = self.board[x2][y2]
-        
-        # Move to empty space
-        if p2 == "Null":
-            if abs(x1 - x2) + abs(y1 - y2) != 1:
-                return False, "Can only move 1 step"
-            self.board[x2][y2] = p1
-            self.board[x1][y1] = "Null"
-            self.turn = "Black" if self.turn == "Red" else "Red"
-            self.no_action_steps += 1
-            self._check_draw()
-            return True, "Moved"
-
-        # Eat piece
-        if p2 == "Covered":
-            return False, "Cannot eat covered piece"
-        
-        color2, type2 = p2.split("_")
-        if color1 == color2:
-            return False, "Cannot eat own piece"
-
         dist = abs(x1 - x2) + abs(y1 - y2)
         
-        if type1 == "Cannon":
-            # Cannon rules: jump over exactly one piece (covered or flipped)
-            count = 0
-            if x1 == x2:
-                step = 1 if y2 > y1 else -1
-                for y in range(y1 + step, y2, step):
-                    if self.board[x1][y] != "Null":
-                        count += 1
-            elif y1 == y2:
-                step = 1 if x2 > x1 else -1
-                for x in range(x1 + step, x2, step):
-                    if self.board[x][y1] != "Null":
-                        count += 1
+        # 1. 處理「砲」的特殊規則 (無視階級，隔子跳吃)
+        if "Cannon" in piece:
+            if target == 'Null':
+                return (dist == 1), "Cannon moves 1 step if not eating"
+            elif target == 'Covered':
+                return False, "Cannon cannot eat unknown pieces"
             else:
-                return False, "Cannon must move straight"
-            
-            if count != 1:
-                return False, "Cannon must jump over exactly one piece"
-        else:
-            # Normal pieces: move 1 step
-            if dist != 1:
-                return False, "Can only move 1 step"
-            
-            # Rank rules
-            r1 = RANK_MAP[type1]
-            r2 = RANK_MAP[type2]
-            
-            if type1 == "King" and type2 == "Soldier":
-                return False, "King cannot eat Soldier"
-            if type1 == "Soldier" and type2 == "King":
-                pass # Soldier can eat King
-            elif r1 < r2:
-                return False, f"{type1} cannot eat {type2}"
+                # 跳吃判斷
+                if x1 == x2: # 水平
+                    count = sum(1 for y in range(min(y1, y2) + 1, max(y1, y2)) if self.checkerboard_display[x1][y] != 'Null')
+                elif y1 == y2: # 垂直
+                    count = sum(1 for x in range(min(x1, x2) + 1, max(x1, x2)) if self.checkerboard_display[x][y1] != 'Null')
+                else:
+                    return False, "Cannon must move in straight line to eat"
+                
+                if count == 1:
+                    return True, "Cannon jump-eats"
+                return False, "Cannon needs exactly 1 piece to jump over"
 
-        self.board[x2][y2] = p1
-        self.board[x1][y1] = "Null"
-        self.turn = "Black" if self.turn == "Red" else "Red"
-        self.no_action_steps = 0
-        self._check_win()
-        return True, f"Ate {p2}"
-
-    def _check_win(self):
-        red_exists = any("Red_" in p for row in self.board for p in row)
-        black_exists = any("Black_" in p for row in self.board for p in row)
-        # Also check covered
-        for r in range(BOARD_ROWS):
-            for c in range(BOARD_COLS):
-                if self.board[r][c] == "Covered":
-                    p = self.hidden_board[r][c]
-                    if "Red_" in p: red_exists = True
-                    if "Black_" in p: black_exists = True
+        # 2. 一般棋子移動與吃子
+        if dist != 1: return False, "Must move 1 step"
+        if target == 'Null': return True, "Safe move"
+        if target == 'Covered': return False, "Cannot eat covered piece"
         
-        if not red_exists:
-            self.winner = "Black"
-        elif not black_exists:
-            self.winner = "Red"
+        p1_type = piece.split('_')[1]
+        p2_type = target.split('_')[1]
+        
+        # 特殊規則：兵吃帥，帥不吃兵
+        if p1_type == 'Soldier' and p2_type == 'King': return True, "Soldier eats King"
+        if p1_type == 'King' and p2_type == 'Soldier': return False, "King cannot eat Soldier"
+        
+        # 一般階級比較 (兵(1) 無法吃 砲(2)/馬(3)/車(4) 等，符合規則)
+        return (RANK[p1_type] >= RANK[p2_type]), f"Rank too low ({p1_type} vs {p2_type})"
 
-    def _check_draw(self):
-        if self.no_action_steps >= 50:
-            self.winner = "Draw"
+    def check_game_over(self) -> str:
+        # 1. 50步和局
+        if self.move_count_since_action >= 50:
+            return "Draw (50 moves no capture)"
+            
+        if not self.color_table:
+            return "Playing"
+
+        # 2. 統計雙方剩餘棋子 (場上 + 牌堆)
+        red_total = 0
+        black_total = 0
+
+        # 場上統計
+        for row in self.checkerboard_display:
+            for p in row:
+                if p.startswith('Red_'): red_total += 1
+                elif p.startswith('Black_'): black_total += 1
+        
+        # 牌堆統計
+        for p in self.piece_pool:
+            if p.startswith('Red_'): red_total += 1
+            elif p.startswith('Black_'): black_total += 1
+
+        if red_total == 0:
+            winner_name = [name for name, color in self.color_table.items() if color == "Black"][0]
+            return f"Player {winner_name} (Black) Win"
+        elif black_total == 0:
+            winner_name = [name for name, color in self.color_table.items() if color == "Red"][0]
+            return f"Player {winner_name} (Red) Win"
+            
+        return "Playing"
