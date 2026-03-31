@@ -47,14 +47,16 @@ backend/
 	routers/
 	schemas/
 	services/
-	socket/
+	sio_server/
+	tcp/
 	test/
 ```
 
 - Place API endpoint definitions in `routers/`.
 - Place Pydantic request/response models in `schemas/`.
 - Place business logic in `services/`.
-- Place websocket-related handlers and connection management in `socket/`.
+- Place Socket.IO event handlers and connection management in `sio_server/`.
+- Place TCP server logic for C socket clients in `tcp/`.
 - Place unit and integration tests in `test/`.
 - Do not introduce database-specific folders (for example: `models/`, `repositories/`, `migrations/`) unless explicitly requested.
 

@@ -29,3 +29,10 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# C compiled binaries (client_socket)
+client_socket/player_mac
+client_socket/player_a.exe
+client_socket/*.exe
+client_socket/*.o
+client_socket/*.out

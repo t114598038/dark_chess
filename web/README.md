@@ -1,51 +1,22 @@
-# 暗棋 (Dark Chess)
+# web/
 
-使用 FastAPI + Vue 3 + Socket.IO 實現的即時暗棋棋盤同步系統。
+暗棋競技平台的 Web 應用程式，包含 FastAPI 後端與 Vue 3 前端。
 
-## 專案結構
+詳細說明請參考[專案根目錄 README](../README.md)。
 
-```
-backend/          # FastAPI 後端
-frontend/         # Vue 3 + Tailwind CSS 前端
-```
-
-## 環境需求
-
-- Python 3.13+
-- Node.js 18+
-- npm
-
-## 安裝與啟動
-
-### 1. 建立 Python 虛擬環境
+## 快速啟動
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-### 2. 安裝後端依賴
-
-```bash
-cd backend
-pip install -r requirements.txt
-```
-
-### 3. 啟動後端
-
-```bash
-cd backend
+# 後端
 source ../.venv/bin/activate
-uvicorn main:combined_app --reload
-```
+pip install -r backend/requirements.txt
+uvicorn main:combined_app --reload --app-dir backend     # :8000 + TCP :8888
 
-後端預設運行在 `http://localhost:8000`。
+# 前端
+cd frontend && npm install && npm run dev                  # :5173
 
-### 4. 安裝前端依賴
-
-```bash
-cd frontend
-npm install
+# 測試
+cd backend && pytest
 ```
 
 ### 5. 啟動前端

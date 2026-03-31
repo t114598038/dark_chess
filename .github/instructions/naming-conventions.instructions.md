@@ -2,12 +2,12 @@
 description: "Use when creating or refactoring backend FastAPI Python code and frontend Vue/TypeScript code. Enforces naming conventions: FastAPI/Python standard naming and camelCase for frontend."
 name: "Backend and Frontend Naming Conventions"
 applyTo:
-  - "backend/**/*.py"
-  - "frontend/**/*.ts"
-  - "frontend/**/*.tsx"
-  - "frontend/**/*.js"
-  - "frontend/**/*.jsx"
-  - "frontend/**/*.vue"
+  - "web/backend/**/*.py"
+  - "web/frontend/**/*.ts"
+  - "web/frontend/**/*.tsx"
+  - "web/frontend/**/*.js"
+  - "web/frontend/**/*.jsx"
+  - "web/frontend/**/*.vue"
 ---
 
 # Naming Conventions
