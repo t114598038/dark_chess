@@ -34,6 +34,7 @@ class GameEngine:
         random.shuffle(self.piece_pool)
         self.color_table = {}  # "A" or "B" -> "Red" or "Black"
         self.move_count_since_action = 0
+        self.total_moves = 0
         self.current_turn = random.choice(["A", "B"])
         self.players = []  # List of player identifiers (e.g., sid or addr)
         self.winner = None
@@ -64,6 +65,16 @@ class GameEngine:
 
         valid, message = self.isValid(name, x1, y1, x2, y2)
         
+        if not valid:
+            # 如果只是「沒輪到你」，則不判定輸贏，僅回傳錯誤
+            if "Not your turn" in message:
+                return False, message
+                
+            # 其他違反物理規則的動作（如：吃自己的棋、移動超過一格等）則判定輸
+            other_name = "B" if name == "A" else "A"
+            self.winner = f"Player {other_name} Win (Violation: {message})"
+            return False, message
+
         if valid:
             if x2 == -1:
                 # 翻牌邏輯
@@ -92,10 +103,12 @@ class GameEngine:
                 self.checkerboard_display[x2][y2] = self.checkerboard_display[x1][y1]
                 self.checkerboard_display[x1][y1] = 'Null'
             
+            # 增加總步數
+            self.total_moves += 1
             # 切換回合
             self.current_turn = "B" if self.current_turn == "A" else "A"
             
-            # 檢查勝負
+            # 再次檢查勝負 (包含棋子吃光的情境)
             status = self.check_game_over()
             if status != "Playing":
                 self.winner = status
@@ -167,6 +180,10 @@ class GameEngine:
         return (RANK[p1_type] >= RANK[p2_type]), f"Rank too low ({p1_type} vs {p2_type})"
 
     def check_game_over(self) -> str:
+        # 0. 優先檢查是否已有違規產生的勝負
+        if self.winner:
+            return self.winner
+
         # 1. 50步和局
         if self.move_count_since_action >= 50:
             return "Draw (50 moves no capture)"

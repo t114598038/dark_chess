@@ -5,8 +5,10 @@ defineProps<{
   roomMode: 'ai' | 'pvp' | null
   isCreator: boolean
   playerRole: 'player' | 'spectator' | null
+  playerRoleName: string | null
   playerCount: number
   currentTurn: string | null
+  currentTurnRole: string | null
   gameResult: string | null
   opponentDisconnected: boolean
   errorMessage: string | null
@@ -36,10 +38,25 @@ function modeLabel(mode: string | null): string {
   return ''
 }
 
-function roleLabel(role: string | null): string {
-  if (role === 'player') return '玩家'
+function roleLabel(role: string | null, roleName: string | null): string {
+  if (role === 'player') {
+    const nameMap: Record<string, string> = {
+      first: ' (先手)',
+      second: ' (後手)'
+    }
+    return '玩家' + (roleName ? nameMap[roleName] || '' : '')
+  }
   if (role === 'spectator') return '觀戰者'
   return ''
+}
+
+function turnLabel(role: string | null, mode: string | null, turnId: string | null): string {
+  if (!role) return ''
+  if (mode === 'ai') {
+    if (turnId === 'AI_PLAYER') return '電腦'
+    return '您'
+  }
+  return role === 'A' ? 'Player 1' : 'Player 2'
 }
 </script>
 
@@ -50,17 +67,17 @@ function roleLabel(role: string | null): string {
       <div class="flex items-center gap-3 text-sm text-gray-600">
         <span>房間：<strong class="text-gray-800">{{ roomId }}</strong></span>
         <span class="rounded bg-gray-100 px-2 py-0.5 text-xs">{{ modeLabel(roomMode) }}</span>
-        <span class="rounded bg-gray-100 px-2 py-0.5 text-xs">{{ roleLabel(playerRole) }}</span>
+        <span class="rounded bg-gray-100 px-2 py-0.5 text-xs">{{ roleLabel(playerRole, playerRoleName) }}</span>
       </div>
       <span class="text-xs text-gray-500">玩家 {{ playerCount }} / {{ roomMode === 'ai' ? 1 : 2 }}</span>
     </div>
 
     <!-- Turn indicator -->
     <div
-      v-if="roomState === 'playing' && currentTurn"
+      v-if="roomState === 'playing' && currentTurnRole"
       class="rounded-lg bg-blue-50 px-4 py-2 text-center text-sm text-blue-700"
     >
-      當前回合：Player {{ currentTurn }}
+      當前回合：<strong class="font-bold">{{ turnLabel(currentTurnRole, roomMode, currentTurn) }}</strong>
     </div>
 
     <!-- Waiting message -->

@@ -13,6 +13,7 @@ import {
     onRoomCreated,
     onRoomState,
     onPlayerJoined,
+    onPlayerRole,
     onGameStarted,
     onBoardUpdate,
     onMoveResult,
@@ -29,9 +30,11 @@ export function useBoard() {
     const roomMode = ref<'ai' | 'pvp' | null>(null)
     const roomState = ref<'waiting' | 'playing' | 'finished' | null>(null)
     const playerRole = ref<'player' | 'spectator' | null>(null)
+    const playerRoleName = ref<string | null>(null) // 'first' or 'second'
     const isCreator = ref(false)
     const playerCount = ref(0)
     const currentTurn = ref<string | null>(null)
+    const currentTurnRole = ref<string | null>(null)
     const gameResult = ref<string | null>(null)
     const opponentDisconnected = ref(false)
     const errorMessage = ref<string | null>(null)
@@ -59,6 +62,7 @@ export function useBoard() {
             roomMode.value = data.mode
             playerCount.value = data.playerCount
             currentTurn.value = data.currentTurn
+            currentTurnRole.value = data.currentTurnRole
             if (data.board && data.board.length) {
                 boardState.value = data.board
             }
@@ -66,6 +70,10 @@ export function useBoard() {
 
         onPlayerJoined((data) => {
             playerCount.value = data.playerCount
+        })
+
+        onPlayerRole((data) => {
+            playerRoleName.value = data.role
         })
 
         onGameStarted((data) => {
@@ -82,6 +90,7 @@ export function useBoard() {
         onMoveResult((data) => {
             lastMoveMessage.value = data.message
             currentTurn.value = data.currentTurn
+            // Note: we might want currentTurnRole here too if move_result included it
             if (!data.success) {
                 errorMessage.value = data.message
             } else {
@@ -187,9 +196,11 @@ export function useBoard() {
         roomMode.value = null
         roomState.value = null
         playerRole.value = null
+        playerRoleName.value = null
         isCreator.value = false
         playerCount.value = 0
         currentTurn.value = null
+        currentTurnRole.value = null
         gameResult.value = null
         opponentDisconnected.value = false
         errorMessage.value = null
@@ -213,9 +224,11 @@ export function useBoard() {
         roomMode,
         roomState,
         playerRole,
+        playerRoleName,
         isCreator,
         playerCount,
         currentTurn,
+        currentTurnRole,
         gameResult,
         opponentDisconnected,
         errorMessage,

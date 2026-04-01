@@ -1,5 +1,5 @@
 import asyncio
-
+import json
 import socketio
 
 from services.auto_ai import BanqiAI
@@ -17,19 +17,43 @@ banqi_ai = BanqiAI()
 # ── helpers ──────────────────────────────────────────────────────────
 
 
-async def _broadcast_room_state(room: Room) -> None:
+async def _get_room_state_data(room: Room) -> dict:
     board = room.game.get_public_board() if room.game else []
-    current_turn = room.game.current_turn if room.game else None
-    data = {
+    
+    current_turn_role = room.game.current_turn if room.game else None
+    current_turn_id = None
+    if room.game and current_turn_role:
+        idx = 0 if current_turn_role == "A" else 1
+        if idx < len(room.game.players):
+            current_turn_id = room.game.players[idx]
+
+    return {
         "room_id": room.room_id,
         "state": room.state,
         "mode": room.mode,
         "player_count": len(room.player_sids),
-        "current_turn": current_turn,
+        "current_turn": current_turn_id,
+        "current_turn_role": current_turn_role,
         "board": board,
+        "color_table": room.game.color_table if room.game else {},
+        "total_moves": room.game.total_moves if room.game else 0,
     }
+
+
+async def _broadcast_room_state(room: Room) -> None:
+    data = await _get_room_state_data(room)
     room_name = f"{room.room_id}-board"
     await sio.emit("room_state", data, room=room_name)
+
+    # Broadcast to TCP clients if any
+    if hasattr(room, 'tcp_clients'):
+        tcp_message = f"UPDATE {json.dumps(data)}\n"
+        for pid, writer in list(room.tcp_clients.items()):
+            try:
+                writer.write(tcp_message.encode())
+                await writer.drain()
+            except Exception as e:
+                print(f"TCP Push to {pid} failed: {e}")
 
 
 async def _run_ai_turn(room: Room) -> None:
@@ -38,7 +62,7 @@ async def _run_ai_turn(room: Room) -> None:
         return
 
     while game.current_turn == game.get_player_name(AI_PLAYER_ID):
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.8)
         board = game.get_public_board()
         move_str = banqi_ai.get_move(board, AI_PLAYER_ID, game.color_table)
         if not move_str:
@@ -54,6 +78,7 @@ async def _run_ai_turn(room: Room) -> None:
             break
 
         await board_sync.broadcast(room.room_id, game.get_public_board())
+        await _broadcast_room_state(room)
 
         status = game.check_game_over()
         if status != "Playing":
@@ -64,6 +89,7 @@ async def _run_ai_turn(room: Room) -> None:
                 {"room_id": room.room_id, "result": status},
                 room=f"{room.room_id}-board",
             )
+            await _broadcast_room_state(room)
             break
 
 
@@ -125,6 +151,7 @@ async def create_room(sid: str, data: dict) -> None:
         room = room_manager.create_room(room_id, mode, sid)
         await sio.enter_room(sid, f"{room_id}-board")
         await sio.emit("room_created", {"room_id": room_id, "mode": mode}, room=sid)
+        await sio.emit("player_role", {"role": "first"}, room=sid)
         await _broadcast_room_state(room)
     except ValueError as e:
         await sio.emit("error", {"message": str(e)}, room=sid)
@@ -136,6 +163,10 @@ async def join_room(sid: str, data: dict) -> None:
     try:
         room = room_manager.join_room(room_id, sid)
         await sio.enter_room(sid, f"{room_id}-board")
+        
+        role = "first" if room.player_sids.index(sid) == 0 else "second"
+        await sio.emit("player_role", {"role": role}, room=sid)
+
         await sio.emit(
             "player_joined",
             {"room_id": room_id, "player_count": len(room.player_sids)},
@@ -152,7 +183,9 @@ async def spectate_room(sid: str, data: dict) -> None:
     try:
         room = room_manager.spectate_room(room_id, sid)
         await sio.enter_room(sid, f"{room_id}-board")
-        await _broadcast_room_state(room)
+        # Only send state to the new spectator, don't broadcast to everyone
+        state_data = await _get_room_state_data(room)
+        await sio.emit("room_state", state_data, room=sid)
     except ValueError as e:
         await sio.emit("error", {"message": str(e)}, room=sid)
 
@@ -203,19 +236,7 @@ async def make_move(sid: str, data: dict) -> None:
     success, message = game.action(sid, x1, y1, x2, y2)
 
     status = game.check_game_over()
-    current_turn = game.current_turn
-
-    await sio.emit(
-        "move_result",
-        {
-            "success": success,
-            "message": message,
-            "current_turn": current_turn,
-            "game_status": status,
-        },
-        room=sid,
-    )
-
+    
     if success:
         await board_sync.broadcast(room_id, game.get_public_board())
         await _broadcast_room_state(room)
@@ -228,8 +249,22 @@ async def make_move(sid: str, data: dict) -> None:
                 {"room_id": room_id, "result": status},
                 room=f"{room_id}-board",
             )
+            await _broadcast_room_state(room)
         elif room.mode == "ai":
             await _run_ai_turn(room)
+    else:
+        # Even if move failed, check if game over (violation loss)
+        if status != "Playing":
+            room.state = "finished"
+            room.winner_message = status
+            await sio.emit(
+                "game_over",
+                {"room_id": room_id, "result": status},
+                room=f"{room_id}-board",
+            )
+            await _broadcast_room_state(room)
+        else:
+            await sio.emit("error", {"message": message}, room=sid)
 
 
 @sio.event
