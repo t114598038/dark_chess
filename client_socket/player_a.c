@@ -199,6 +199,7 @@ int main() {
 
     while (1) {
         receive_update(board_data, 4000);
+        printf("%s", board_data);
         if (strlen(board_data) == 0) break;
         if (strstr(board_data, "UPDATE")) {
             // 解析總步數，避免重複處理相同的狀態

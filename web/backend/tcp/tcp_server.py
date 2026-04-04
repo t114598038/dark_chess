@@ -26,26 +26,7 @@ class TcpServer:
 
     # --- 關鍵：主動推播給所有連線 (網頁 + TCP) ---
     async def _broadcast_room_state(self, room: Room) -> None:
-        board = room.game.get_public_board() if room.game else []
-        
-        # Get the player ID whose turn it is
-        current_turn_role = room.game.current_turn if room.game else None
-        current_turn_id = None
-        if room.game and current_turn_role:
-            idx = 0 if current_turn_role == "A" else 1
-            if idx < len(room.game.players):
-                current_turn_id = room.game.players[idx]
-
-        data = {
-            "room_id": room.room_id,
-            "state": room.state,
-            "mode": room.mode,
-            "player_count": len(room.player_sids),
-            "current_turn": current_turn_id,
-            "current_turn_role": current_turn_role,
-            "board": board,
-            "color_table": room.game.color_table if room.game else {},
-        }
+        data = room.get_state_data()
         # 1. 廣播給網頁 (SIO)
         await self.sio.emit("room_state", data, room=f"{room.room_id}-board")
 

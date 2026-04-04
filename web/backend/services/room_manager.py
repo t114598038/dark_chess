@@ -19,6 +19,28 @@ class Room:
     winner_message: str = ""
     disconnect_tasks: dict[str, asyncio.Task] = field(default_factory=dict)
 
+    def get_state_data(self) -> dict:
+        board = self.game.get_public_board() if self.game else []
+        
+        current_turn_role = self.game.current_turn if self.game else None
+        current_turn_id = None
+        if self.game and current_turn_role:
+            idx = 0 if current_turn_role == "A" else 1
+            if idx < len(self.player_sids):
+                current_turn_id = self.player_sids[idx]
+
+        return {
+            "room_id": self.room_id,
+            "state": self.state,
+            "mode": self.mode,
+            "player_count": len(self.player_sids),
+            "current_turn": current_turn_id,
+            "current_turn_role": current_turn_role,
+            "board": board,
+            "color_table": self.game.color_table if self.game else {},
+            "total_moves": self.game.total_moves if self.game else 0,
+        }
+
 
 class RoomManager:
     def __init__(self) -> None:

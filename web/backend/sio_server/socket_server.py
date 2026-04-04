@@ -17,31 +17,12 @@ banqi_ai = BanqiAI()
 # ── helpers ──────────────────────────────────────────────────────────
 
 
-async def _get_room_state_data(room: Room) -> dict:
-    board = room.game.get_public_board() if room.game else []
-    
-    current_turn_role = room.game.current_turn if room.game else None
-    current_turn_id = None
-    if room.game and current_turn_role:
-        idx = 0 if current_turn_role == "A" else 1
-        if idx < len(room.game.players):
-            current_turn_id = room.game.players[idx]
-
-    return {
-        "room_id": room.room_id,
-        "state": room.state,
-        "mode": room.mode,
-        "player_count": len(room.player_sids),
-        "current_turn": current_turn_id,
-        "current_turn_role": current_turn_role,
-        "board": board,
-        "color_table": room.game.color_table if room.game else {},
-        "total_moves": room.game.total_moves if room.game else 0,
-    }
+def _get_room_state_data(room: Room) -> dict:
+    return room.get_state_data()
 
 
 async def _broadcast_room_state(room: Room) -> None:
-    data = await _get_room_state_data(room)
+    data = _get_room_state_data(room)
     room_name = f"{room.room_id}-board"
     await sio.emit("room_state", data, room=room_name)
 
