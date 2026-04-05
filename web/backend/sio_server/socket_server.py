@@ -125,7 +125,7 @@ async def _run_ai_turn(room: Room) -> None:
         print(f"AI Sequence EXITED for room {room.room_id}")
 
 
-def trigger_ai(room: Room) -> None:
+def _trigger_ai(room: Room) -> None:
     if room.mode == "ai" and room.ai_task is None:
         room.ai_task = asyncio.create_task(_run_ai_turn(room))
 
