@@ -39,39 +39,95 @@ async def _broadcast_room_state(room: Room) -> None:
 
 async def _run_ai_turn(room: Room) -> None:
     game = room.game
-    if not game or room.state != "playing":
+    if not game:
+        print(f"AI ERROR: Room {room.room_id} has no game instance.")
+        room.ai_task = None
+        return
+    
+    # 診斷資訊
+    current = game.current_turn
+    ai_role = game.get_player_name(AI_PLAYER_ID)
+    print(f"AI Check (Room {room.room_id}): Current Turn={current}, AI Role={ai_role}, Room State={room.state}")
+
+    if room.state != "playing":
+        print(f"AI Turn skipped: Room is in state '{room.state}' (not 'playing')")
+        room.ai_task = None
         return
 
-    while game.current_turn == game.get_player_name(AI_PLAYER_ID):
-        await asyncio.sleep(0.8)
-        board = game.get_public_board()
-        move_str = banqi_ai.get_move(board, AI_PLAYER_ID, game.color_table)
-        if not move_str:
-            break
+    if current != ai_role:
+        print(f"AI Turn finished: It is currently Player {current}'s turn, not AI ({ai_role}). Waiting for player action...")
+        room.ai_task = None
+        return
 
-        parts = move_str.split()
-        coords = list(map(int, parts))
-        if len(coords) == 2:
-            game.action(AI_PLAYER_ID, coords[0], coords[1])
-        elif len(coords) == 4:
-            game.action(AI_PLAYER_ID, coords[0], coords[1], coords[2], coords[3])
-        else:
-            break
+    print(f"AI Turn sequence STARTING for room {room.room_id}")
+    try:
+        while game.current_turn == ai_role and room.state == "playing":
+            print(f"AI is thinking... (Looping while current_turn == {ai_role})")
+            await asyncio.sleep(1.5)
+            board = game.get_public_board()
+            
+            print(f"AI calling move generator for role {ai_role}")
+            move_str = banqi_ai.get_move(board, ai_role, game.color_table, room_id=room.room_id)
+            print(f"AI move generator returned: '{move_str}'")
+            
+            success = False
+            message = ""
+            
+            if move_str:
+                parts = move_str.split()
+                try:
+                    coords = list(map(int, parts))
+                    if len(coords) == 2:
+                        success, message = game.action(AI_PLAYER_ID, coords[0], coords[1])
+                    elif len(coords) == 4:
+                        success, message = game.action(AI_PLAYER_ID, coords[0], coords[1], coords[2], coords[3])
+                except Exception as parse_err:
+                    message = f"Parse error: {parse_err}"
+            
+            if success:
+                print(f"AI ACTION SUCCESS: {message}")
+                await board_sync.broadcast(room.room_id, game.get_public_board())
+                await _broadcast_room_state(room)
+            else:
+                print(f"AI ACTION FAILED ('{move_str}'): {message}. Attempting emergency fallback...")
+                fallback_move = banqi_ai._get_fallback_move(board)
+                if fallback_move:
+                    print(f"AI executing emergency flip: {fallback_move}")
+                    f_parts = list(map(int, fallback_move.split()))
+                    success, message = game.action(AI_PLAYER_ID, f_parts[0], f_parts[1])
+                    if success:
+                        await board_sync.broadcast(room.room_id, game.get_public_board())
+                        await _broadcast_room_state(room)
+                
+                if not success:
+                    print(f"AI CRITICAL: Both primary and fallback actions failed. Breaking sequence to prevent hang.")
+                    break
 
-        await board_sync.broadcast(room.room_id, game.get_public_board())
-        await _broadcast_room_state(room)
+            status = game.check_game_over()
+            if status != "Playing":
+                print(f"AI Turn sequence ENDED: Game Over ({status})")
+                room.state = "finished"
+                room.winner_message = status
+                await sio.emit("game_over", {"room_id": room.room_id, "result": status}, room=f"{room.room_id}-board")
+                await _broadcast_room_state(room)
+                break
+            
+            # 更新目前狀態，準備下一輪 while 檢查
+            current = game.current_turn
+            print(f"AI Action cycle complete. Next turn is: {current}")
 
-        status = game.check_game_over()
-        if status != "Playing":
-            room.state = "finished"
-            room.winner_message = status
-            await sio.emit(
-                "game_over",
-                {"room_id": room.room_id, "result": status},
-                room=f"{room.room_id}-board",
-            )
-            await _broadcast_room_state(room)
-            break
+    except Exception as e:
+        print(f"AI EXCEPTION in room {room.room_id}: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        room.ai_task = None
+        print(f"AI Sequence EXITED for room {room.room_id}")
+
+
+def trigger_ai(room: Room) -> None:
+    if room.mode == "ai" and room.ai_task is None:
+        room.ai_task = asyncio.create_task(_run_ai_turn(room))
 
 
 async def _handle_disconnect_timeout(room_id: str, disconnected_sid: str) -> None:
@@ -184,8 +240,7 @@ async def start_game(sid: str, data: dict) -> None:
         )
         await _broadcast_room_state(room)
 
-        if room.mode == "ai":
-            await _run_ai_turn(room)
+        _trigger_ai(room)
     except ValueError as e:
         await sio.emit("error", {"message": str(e)}, room=sid)
 
@@ -232,7 +287,7 @@ async def make_move(sid: str, data: dict) -> None:
             )
             await _broadcast_room_state(room)
         elif room.mode == "ai":
-            await _run_ai_turn(room)
+            _trigger_ai(room)
     else:
         # Even if move failed, check if game over (violation loss)
         if status != "Playing":

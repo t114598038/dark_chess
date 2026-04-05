@@ -1,0 +1,40 @@
+{
+  "board": [
+    "Black_Soldier",
+    "Null",
+    "Null",
+    "Null",
+    "Null",
+    "Null",
+    "Null",
+    "Red_Elephant",
+    "Null",
+    "Null",
+    "Red_Guard",
+    "Null",
+    "Null",
+    "Red_Elephant",
+    "Null",
+    "Null",
+    "Null",
+    "Black_Guard",
+    "Black_Soldier",
+    "Black_Elephant",
+    "Red_Car",
+    "Null",
+    "Null",
+    "Null",
+    "Null",
+    "Null",
+    "Null",
+    "Null",
+    "Null",
+    "Null",
+    "Null",
+    "Red_Soldier"
+  ],
+  "color_table": {
+    "A": "Black",
+    "B": "Red"
+  }
+}

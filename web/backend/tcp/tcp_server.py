@@ -4,6 +4,7 @@ import json
 from services.auto_ai import BanqiAI
 from services.room_manager import RoomManager, Room, AI_PLAYER_ID
 from services.board_sync import BoardSync
+from sio_server.socket_server import trigger_ai
 
 DISCONNECT_TIMEOUT_SECONDS = 10
 
@@ -94,6 +95,7 @@ class TcpServer:
                             
                             # 2. 立刻廣播
                             await self._broadcast_room_state(room)
+                            trigger_ai(room)
                             
                             writer.write(b"SUCCESS Game Started\n")
                             await writer.drain()
@@ -126,6 +128,7 @@ class TcpServer:
                             writer.write(response.encode())
                             await writer.drain()
                             await self._broadcast_room_state(room)
+                            trigger_ai(room)
                             
                             if status != "Playing":
                                 room.state = "finished"
