@@ -6,6 +6,13 @@
 #include <ctype.h>
 
 // --- 超強健解析器：直接暴力搜尋關鍵字 ---
+#ifndef min
+#define min(a,b) (((a) < (b)) ? (a) : (b))
+#endif
+
+#ifndef max
+#define max(a,b) (((a) > (b)) ? (a) : (b))
+#endif
 
 void get_piece_at(const char* json, int index, char* out_piece) {
     const char* p = strstr(json, "\"board\"");
