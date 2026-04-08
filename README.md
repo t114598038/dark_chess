@@ -18,6 +18,7 @@
                                              │  │  room_manager     │
                                              │  │  board_sync       │
                                              │  │  auto_ai          │
+                                             │  │  move_generator   │
                                              │  └─ routers/         │
                                              │     REST API 路由    │
                                              └──────────────────────┘
