@@ -41,7 +41,7 @@
 ## 專案結構
 
 ```
-black_chess/
+dark_chess/
 ├── web/
 │   ├── backend/                 # FastAPI + python-socketio 後端
 │   │   ├── main.py              # 入口，啟動 HTTP (:8000) + TCP (:8888)
@@ -54,7 +54,8 @@ black_chess/
 │   │   │   ├── game_engine.py   # 暗棋遊戲引擎（規則、勝負判定）
 │   │   │   ├── room_manager.py  # 房間管理（建立、加入、觀戰）
 │   │   │   ├── board_sync.py    # 棋盤同步廣播
-│   │   │   └── auto_ai.py      # 內建 AI 決策
+│   │   │   ├── auto_ai.py       # AI 決策調度器 (負責編譯並調用 move_generator.c )
+│   │   │   └── move_generator.c # 核心移動生成引擎 (負責權重與路徑演算)
 │   │   ├── sio_server/          # Socket.IO 事件處理
 │   │   │   └── socket_server.py
 │   │   ├── tcp/                 # TCP 伺服器（供 C 客戶端連線）
@@ -67,8 +68,10 @@ black_chess/
 │       │   └── services/        # socketService
 │       └── vite.config.ts       # 開發代理 /socket.io → :8000
 ├── client_socket/               # C TCP 客戶端（模擬用，勿編輯）
-│   ├── player_mac.c             # macOS 版本
-│   └── player_a.c               # Windows 版本
+│   ├── dark_chess_client.h      # 通訊封裝文件(包含連線、加入房間邏輯)
+│   ├── player_a.c               # Windows 版本
+│   ├── player_a_sample.c        # 客戶端開發範本 (Windows 基礎框架)
+│   └── player_mac.c             # macOS 版本(簡單指令輸入版本)
 └── README.md
 ```
 
