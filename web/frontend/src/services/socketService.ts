@@ -4,7 +4,13 @@ let socket: Socket | null = null
 
 export function connectSocket(): Socket {
     if (!socket) {
-        socket = io('http://localhost:8000')
+        // 動態取得目前的 Host 位址，若在開發模式下則連線到 8000 埠
+        const protocol = window.location.protocol
+        const hostname = window.location.hostname
+        const port = '8000'
+        const socketUrl = `${protocol}//${hostname}:${port}`
+        
+        socket = io(socketUrl)
     }
     if (!socket.connected) {
         socket.connect()
