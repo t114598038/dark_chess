@@ -21,7 +21,7 @@ const {
   errorMessage,
   selectedPiece,
   createRoom,
-  joinRoomAsPlayer,
+  // joinRoomAsPlayer,
   spectateRoom,
   startGame,
   handleCellClick,

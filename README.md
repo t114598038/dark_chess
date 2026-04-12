@@ -91,25 +91,33 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-### 2. 啟動後端
+### 2. 一鍵部署（推薦）
 
 ```bash
-source .venv/bin/activate
-pip install -r web/backend/requirements.txt
-uvicorn main:combined_app --reload --app-dir web/backend --host 0.0.0.0
+./deploy.sh
 ```
 
-後端運行於 `http://localhost:8000`，同時開啟 TCP 伺服器於 `:8888`。
+自動完成：安裝後端依賴 → 安裝前端依賴 → 打包前端 → 啟動伺服器。
 
-### 3. 啟動前端
+部署後 FastAPI 會代理前端靜態檔案，只需開放 `:8000` 即可同時提供前端頁面與 API。
+
+按 `Ctrl+C` 即可停止伺服器。
+
+### 3. 開發模式（前後端分離）
 
 ```bash
+# 後端
+source .venv/bin/activate
+pip install -r web/backend/requirements.txt
+uvicorn main:combined_app --reload --app-dir web/backend   # :8000 + TCP :8888
+
+# 前端（另開終端）
 cd web/frontend
 npm install
 npm run dev -- --host
 ```
 
-前端運行於 `http://localhost:5173`，自動代理 Socket.IO 請求到後端。
+開發模式下前端運行於 `http://localhost:5173`，自動代理 Socket.IO 請求到後端。
 
 ### 4. 執行測試
 
@@ -118,6 +126,10 @@ source .venv/bin/activate
 cd web/backend
 pytest
 ```
+
+### 5. 停止伺服器
+
+直接按 `Ctrl+C` 即可優雅關閉 HTTP 伺服器與 TCP 伺服器。
 
 ## 使用 C 客戶端模擬對戰 (client_socket)
 

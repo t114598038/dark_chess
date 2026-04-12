@@ -24,6 +24,7 @@ class TcpServer:
         self.banqi_ai = banqi_ai
         self.host = host
         self.port = port
+        self._server: asyncio.Server | None = None
 
     # --- 關鍵：主動推播給所有連線 (網頁 + TCP) ---
     async def _broadcast_room_state(self, room: Room) -> None:
@@ -173,7 +174,13 @@ class TcpServer:
             await writer.wait_closed()
 
     async def start(self):
-        server = await asyncio.start_server(self.handle_client, self.host, self.port)
+        self._server = await asyncio.start_server(
+            self.handle_client, self.host, self.port
+        )
         print(f"TCP Server started on {self.host}:{self.port}")
-        async with server:
-            await server.serve_forever()
+        await self._server.serve_forever()
+
+    async def stop(self):
+        if self._server:
+            self._server.close()
+            await self._server.wait_closed()
