@@ -8,7 +8,7 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-#define SERVER_IP "127.0.0.1"
+#define SERVER_IP "140.124.184.220"
 #define PORT 8888
 
 static SOCKET _global_socket = INVALID_SOCKET;
