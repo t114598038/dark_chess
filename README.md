@@ -96,7 +96,7 @@ source .venv/bin/activate
 ```bash
 source .venv/bin/activate
 pip install -r web/backend/requirements.txt
-uvicorn main:combined_app --reload --app-dir web/backend
+uvicorn main:combined_app --reload --app-dir web/backend --host 0.0.0.0
 ```
 
 後端運行於 `http://localhost:8000`，同時開啟 TCP 伺服器於 `:8888`。
@@ -106,7 +106,7 @@ uvicorn main:combined_app --reload --app-dir web/backend
 ```bash
 cd web/frontend
 npm install
-npm run dev
+npm run dev -- --host
 ```
 
 前端運行於 `http://localhost:5173`，自動代理 Socket.IO 請求到後端。
