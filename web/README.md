@@ -6,27 +6,33 @@
 
 ## 快速啟動
 
+### 一鍵部署
+
+```bash
+# 在專案根目錄執行
+./deploy.sh
+```
+
+自動安裝依賴、打包前端、啟動伺服器。部署後訪問 `http://localhost:8000` 即可使用。
+
+按 `Ctrl+C` 停止伺服器。
+
+### 開發模式（前後端分離）
+
 ```bash
 # 後端
 source ../.venv/bin/activate
 pip install -r backend/requirements.txt
 uvicorn main:combined_app --reload --app-dir backend     # :8000 + TCP :8888
 
-# 前端
+# 前端（另開終端）
 cd frontend && npm install && npm run dev                  # :5173
 
 # 測試
 cd backend && pytest
 ```
 
-### 5. 啟動前端
-
-```bash
-cd frontend
-npm run dev
-```
-
-前端預設運行在 `http://localhost:5173`。
+開發模式下前端運行在 `http://localhost:5173`。
 
 ## 使用方式
 
