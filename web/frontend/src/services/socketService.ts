@@ -73,6 +73,7 @@ export interface RoomStatePayload {
     mode: 'ai' | 'pvp'
     playerCount: number
     currentTurn: string | null
+    currentTurnRole: string | null
     board: string[][]
 }
 
@@ -97,6 +98,7 @@ function mapRoomState(data: Record<string, unknown>): RoomStatePayload {
         mode: data.mode as RoomStatePayload['mode'],
         playerCount: data.player_count as number,
         currentTurn: (data.current_turn as string) ?? null,
+        currentTurnRole: (data.current_turn_role as string) ?? null,
         board: data.board as string[][],
     }
 }
@@ -135,6 +137,12 @@ export function onPlayerJoined(cb: (data: { roomId: string; playerCount: number 
     })
 }
 
+export function onPlayerRole(cb: (data: { role: string }) => void): void {
+    connectSocket().on('player_role', (raw: Record<string, unknown>) => {
+        cb({ role: raw.role as string })
+    })
+}
+
 export function onGameStarted(cb: (data: { roomId: string; board: string[][] }) => void): void {
     connectSocket().on('game_started', (raw: Record<string, unknown>) => {
         cb({ roomId: raw.room_id as string, board: raw.board as string[][] })
@@ -165,7 +173,7 @@ export function onPlayerDisconnected(cb: (data: { roomId: string }) => void): vo
 
 export function onRoomEnded(cb: (data: { roomId: string }) => void): void {
     connectSocket().on('room_ended', (raw: Record<string, unknown>) => {
-        cb({ roomId: raw.room_id as string })
+        cb({ roomId: raw.role as string })
     })
 }
 
@@ -176,7 +184,7 @@ export function onError(cb: (data: { message: string }) => void): void {
 export function offAllGameEvents(): void {
     if (!socket) return
     const events = [
-        'room_created', 'room_state', 'player_joined', 'game_started',
+        'room_created', 'room_state', 'player_joined', 'player_role', 'game_started',
         'board_update', 'move_result', 'game_over', 'player_disconnected',
         'room_ended', 'error',
     ]

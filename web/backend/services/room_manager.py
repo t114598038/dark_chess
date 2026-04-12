@@ -18,6 +18,32 @@ class Room:
     game: GameEngine | None = None
     winner_message: str = ""
     disconnect_tasks: dict[str, asyncio.Task] = field(default_factory=dict)
+    ai_task: asyncio.Task | None = None
+
+    def get_state_data(self) -> dict:
+        board = self.game.get_public_board() if self.game else []
+        
+        current_turn_role = self.game.current_turn if self.game else None
+        current_turn_id = None
+        if self.game and current_turn_role:
+            idx = 0 if current_turn_role == "A" else 1
+            # In AI mode, the second player is AI_PLAYER_ID but not in player_sids
+            if idx < len(self.player_sids):
+                current_turn_id = self.player_sids[idx]
+            elif self.mode == "ai" and idx == 1:
+                current_turn_id = AI_PLAYER_ID
+
+        return {
+            "room_id": self.room_id,
+            "state": self.state,
+            "mode": self.mode,
+            "player_count": len(self.player_sids),
+            "current_turn": current_turn_id,
+            "current_turn_role": current_turn_role,
+            "board": board,
+            "color_table": self.game.color_table if self.game else {},
+            "total_moves": self.game.total_moves if self.game else 0,
+        }
 
 
 class RoomManager:

@@ -11,9 +11,11 @@ const {
   roomMode,
   roomState,
   playerRole,
+  playerRoleName,
   isCreator,
   playerCount,
   currentTurn,
+  currentTurnRole,
   gameResult,
   opponentDisconnected,
   errorMessage,
@@ -52,8 +54,10 @@ const isInteractive = () => playerRole.value === 'player' && roomState.value ===
         :roomMode="roomMode"
         :isCreator="isCreator"
         :playerRole="playerRole"
+        :playerRoleName="playerRoleName"
         :playerCount="playerCount"
         :currentTurn="currentTurn"
+        :currentTurnRole="currentTurnRole"
         :gameResult="gameResult"
         :opponentDisconnected="opponentDisconnected"
         :errorMessage="errorMessage"
