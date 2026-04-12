@@ -109,7 +109,7 @@ source .venv/bin/activate
 # 後端
 source .venv/bin/activate
 pip install -r web/backend/requirements.txt
-uvicorn main:combined_app --reload --app-dir web/backend   # :8000 + TCP :8888
+uvicorn main:combined_app --reload --app-dir web/backend --host 0.0.0.0  # :8000 + TCP :8888
 
 # 前端（另開終端）
 cd web/frontend
